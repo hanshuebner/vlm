@@ -6,7 +6,7 @@
 
 #include <fcntl.h>
 #include <sys/stat.h>
-#ifndef OS_DARWIN
+#if !defined(OS_DARWIN) && !defined(__FreeBSD__)
 #include <malloc.h>
 #endif
 #include <string.h>
@@ -781,7 +781,7 @@ static int WorldP (struct dirent* candidateWorld)
 					   strlen (VLMWorldSuffix)))))
 		  {
 			sprintf (candidatePathname, "%s/%s", scanningDir, candidateWorld->d_name);
-#ifdef OS_OSF
+#if defined(OS_OSF) || defined(__FreeBSD__)
 			aWorld.pathname = strdup (candidatePathname);
 #else
 			aWorld.pathname = strndup (candidatePathname, _POSIX_PATH_MAX+1);
@@ -1577,7 +1577,7 @@ static void ByteSwapOneWorld (World* world)
   uint32_t *wordBlockStart;
   int newFD;
 
-#ifdef OS_OSF
+#if defined(OS_OSF) || defined(__FreeBSD__)
 	newPathname = strdup (world->pathname);
 #else
 	newPathname = strndup (world->pathname, _POSIX_PATH_MAX + 1);
@@ -1641,7 +1641,7 @@ static void ByteSwapOneWorld (World* world)
 	CloseWorldFile (world, FALSE);
 	close (newFD);
 
-#ifdef OS_OSF
+#if defined(OS_OSF) || defined(__FreeBSD__)
 	bakPathname = strdup (world->pathname);
 #else
 	bakPathname = strndup (world->pathname, _POSIX_PATH_MAX + 1);

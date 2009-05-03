@@ -28,6 +28,11 @@ typedef struct
 	struct sock_filter  filters[N_FILTERS];
   }		 EmbNetFilter;
 
+#elif defined(__FreeBSD__)
+#include <pcap.h>
+#define EmbNetFilter struct bpf_program
+#define USE_LIBPCAP
+
 #elif defined(OS_DARWIN)
 #include <net/bpf.h>
 #define EmbNetFilter struct bpf_program

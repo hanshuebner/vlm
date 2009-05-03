@@ -682,10 +682,14 @@ typedef struct
 	EmbQueue	*guestToHostReturnQ;	/* ... */
 	EmbQueue	*hostToGuestSupplyQ;	/* ... */
 	EmbQueue	*hostToGuestQ;			/* ... */
+#ifdef USE_LIBPCAP
+    pcap_t* pcap;
+#else
 	int			fd;						/* File descriptor of our filter or -1 if not open */
 #ifdef OS_LINUX
 	struct sockaddr_ll	sll;			/* Contains information needed to write packets */
 	EmbNetARPReq		*arpReq;		/* List of ARP entries associated with this channel */
+#endif
 #endif
 	EmbNetFilter filter;				/* Our packet filter psuedo-code */
 	pthread_t	receiverThread;			/* Packet receiver runs in this thread */

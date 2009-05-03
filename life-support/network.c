@@ -13,4 +13,7 @@
 
 #elif defined(OS_DARWIN)
 #include "network-darwin.c"
+
+#elif defined(__FreeBSD__)
+#include "network-libpcap.c"
 #endif

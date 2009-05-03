@@ -7,7 +7,7 @@
 #include <sys/times.h>
 
 #include <sys/mman.h>
-#ifdef OS_DARWIN
+#if defined(OS_DARWIN) || defined(__FreeBSD__)
 #define MAP_ANONYMOUS MAP_ANON
 #endif
 
@@ -64,7 +64,7 @@ char *haltreason (int reason)
 extern void segv_handler (int sigval, int code, struct sigcontext *scp);
 #elif defined(OS_LINUX)
 extern void segv_handler (int sigval, siginfo_t *si, void *uc);
-#elif defined(OS_DARWIN)
+#elif defined(OS_DARWIN) || defined(__FreeBSD__)
 extern void segv_handler (int sigval, siginfo_t *si, void *uc);
 #endif
 
@@ -95,6 +95,11 @@ void ill_handler (int sigval, siginfo_t *si, void *uc)
 {
      ((struct ucontext*)uc)->uc_mcontext->ss.srr0 = (uint64_t)DoIStageError;
 }
+#elif defined(__FreeBSD__)
+void ill_handler (int sigval, siginfo_t *si, void *uc)
+{
+     ((struct __ucontext*)uc)->uc_mcontext.mc_rip = (uint64_t)DoIStageError;
+}
 #endif
 
 extern void ARITHMETICEXCEPTION();
@@ -118,6 +123,11 @@ void fpe_handler (int sigval, siginfo_t *si, void *uc)
 void fpe_handler (int sigval, siginfo_t *si, void *uc)
 {
      ((struct ucontext*)uc)->uc_mcontext->ss.srr0 = (uint64_t)ARITHMETICEXCEPTION;
+}
+#elif defined(__FreeBSD__)
+void fpe_handler (int sigval, siginfo_t *si, void *uc)
+{
+     ((struct __ucontext*)uc)->uc_mcontext.mc_rip = (uint64_t)ARITHMETICEXCEPTION;
 }
 #endif
 

@@ -88,7 +88,7 @@ OPT = -O -mtune=nocona \
 
 #-finline-functions, -fweb, -frename-registers and -funswitch-loops
 
-CFLAGS = $(OPT) -std=gnu99 -g2 -I. -I$(LIFE) -I$(EMULATOR) -I$(X86EMULATOR) $(MAINOPTIONS) $(OPTIONS)
+CFLAGS = $(OPT) -std=gnu99 -g2 -I/usr/X11R6/include -I. -I$(LIFE) -I$(EMULATOR) -I$(X86EMULATOR) $(MAINOPTIONS) $(OPTIONS)
 AFLAGS = -g2 -I. -I$(LIFE) -I$(EMULATOR) -I$(X86EMULATOR) $(MAINOPTIONS) $(OPTIONS)
 
 .SUFFIXES:
@@ -109,7 +109,7 @@ SRCS = main.c spy.c world_tools.c utilities.c \
 
 NETWORKSOURCES = $(LIFE)/network-osf.c \
 	$(LIFE)/network-linux.c $(LIFE)/network-tun-linux.c \
-	$(LIFE)/network-darwin.c
+	$(LIFE)/network-darwin.c $(LIFE)/network-libpcap.c
 
 FAKEEMULATOR=y
 ifndef FAKEEMULATOR
@@ -145,14 +145,14 @@ OTHEROBJS =
 
 ifdef NONSHARED
   OTHEROBJS += 
-  LIBRARIES = -lpthread -lc -lX11 -lm
+  LIBRARIES = -lpthread -lc -lX11 -lm -lpcap
   EARLYLIBS = -L/opt/ppc64/X11R6/lib
 else
   OTHEROBJS +=
 #  LIBRARIES = -lpthread -lc -lX11 -lm
 #  EARLYLIBS = -L/opt/ppc64/X11R6/lib
-  LIBRARIES = -lpthread -lc -lX11 -lm
-  EARLYLIBS = -L/usr/X11R6/lib64
+  LIBRARIES = -lpthread -lc -lX11 -lm -lpcap
+  EARLYLIBS = -L/usr/X11R6/lib64 -L/usr/X11R6/lib
 endif
 
 ifdef PROFILE
@@ -160,6 +160,8 @@ ifdef PROFILE
 endif
 
 $(LIFE)/network.o: $(NETWORKSOURCES)
+
+stub/stub.o: glob(stub/output*)
 
 $(EMULATOROBJ): $(ASMS) $(COMPONENTS)
 

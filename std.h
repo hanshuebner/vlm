@@ -14,6 +14,8 @@
 #define OS_LINUX
 #elif defined(__APPLE__)
 #define OS_DARWIN
+#elif defined(__FreeBSD__)
+#define OS_FREEBSD
 #else
 #error "Unsupported OS"
 #endif
@@ -104,7 +106,7 @@ typedef unsigned long int	uintmax_t;
 #endif
 
 #include <signal.h>
-#ifdef OS_DARWIN
+#if defined(OS_DARWIN) || defined(__FreeBSD__)
 #include <ucontext.h>
 #endif
 

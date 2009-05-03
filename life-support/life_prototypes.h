@@ -123,12 +123,15 @@ void	InitializeNetworkChannels (VLMConfig* config);
 void	ResetNetworkChannel (EmbChannel* channel);
 void	TerminateNetworkChannels (void);
 
-static void		InitializeNetChannel (NetworkInterface* interface, int netUnit,
+static void		InitializeNetChannel (NetworkInterface* interface, int netUnit
 #ifdef OS_OSF
-									  struct in_addr* localHostAddress);
+									  , struct in_addr* localHostAddress
 #else
-									  int ipSocket, struct ifconf* ifc);
+#ifndef USE_LIBPCAP
+									  , int ipSocket, struct ifconf* ifc
 #endif
+#endif
+                                      );
 static void		NetworkChannelReceiver (pthread_addr_t argument);
 static void		NetworkChannelTransmitter (EmbNetChannel* pNetChannel);
 #ifdef OS_OSF

@@ -150,7 +150,7 @@ void vwarn (char* section, char* format, ...)
 
 void SetCommandName (char* newCommandName)
 {
-#ifdef OS_OSF
+#if defined(OS_OSF) || defined(__FreeBSD__)
 	CommandName = strdup (newCommandName);
 #else
 	CommandName = strndup (newCommandName, 32);
