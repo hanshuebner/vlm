@@ -86,7 +86,7 @@ typedef struct processorstate {
 	uint64_t       scarea;
 	uint64_t       scaddress;
 	uint64_t       restartsp;
-	uint64_t       stop_interpreter;
+volatile	uint64_t       stop_interpreter;
 	uint64_t       immediate_arg;
 	uint64_t       continuationcp;
 	int64_t        continuation;
@@ -157,8 +157,8 @@ typedef struct processorstate {
 	char          *raw;
 	uint64_t       rawtranslate_mask;
 	char          *rawtranslate;
-	int32_t        please_stop;
-	int32_t        please_trap;
+volatile	int32_t        please_stop;
+volatile	int32_t        please_trap;
 	int64_t        runningp;
 	uint64_t       ac0array;
 	uint64_t       ac0arword;

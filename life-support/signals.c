@@ -165,6 +165,14 @@ void WaitForLifeSupport ()
 
 void EmbSendSignal (SignalNumber signal)
 {
+  //hack
+  if (signal == 0) {
+    //printf("EmbSendSignal(0)\n"); 
+  //  while (1);
+  //  if (EmbCommAreaPtr->clock_interval > 0) return;
+    //return;
+ }
+  
 	if (pthread_mutex_lock (&EmbCommAreaPtr->wakeupLock))
 		vpunt (NULL, "Unable to lock the VLM wakeup lock in thread %lx", pthread_self ());
 	

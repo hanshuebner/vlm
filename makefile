@@ -75,7 +75,7 @@ AFLAGS = -g2 -I. -I$(LIFE) -I$(EMULATOR) -I$(ALPHAEMULATOR) $(MAINOPTIONS) $(OPT
 SRCS = main.c spy.c world_tools.c utilities.c \
        $(LIFE)/cold_load.c $(LIFE)/console.c $(LIFE)/disks.c $(LIFE)/initialization.c \
        $(LIFE)/network.c $(LIFE)/message_channels.c $(LIFE)/polling.c $(LIFE)/queues.c \
-       $(LIFE)/signals.c \
+       $(LIFE)/signals.c $(LIFE)/network-osf.c \
        $(EMULATOR)/interfac.c $(EMULATOR)/interpds.c $(EMULATOR)/externals.c \
        $(EMULATOR)/memory.c
 
@@ -115,12 +115,16 @@ OTHEROBJS = $(OTHER)/pfopen.o \
 LIBRARIES = $(NONSHARED?-non_shared -lpthread -lpthreads -lmach -lc_r -lexc -lX11 -ldnet_stub \
                        :-lpthread -lpthreads -lmach -lc_r -lexc -lX11)
 
+all: genera
+
 $(EMULATOROBJ): $(ASMS) $(COMPONENTS)
 
 $(EMULATOR)/externals.o: $(EMULATOR)/externals.c $(EMULATORINCLUDES)
 $(EMULATOR)/interpds.o: $(EMULATOR)/interpds.c $(EMULATORINCLUDES) $(EMULATOR)/asmfuns.h
 $(EMUALTOR)/interfac.o: $(EMULATOR)/interfac.c $(EMULATORINCLUDES)
 spy.o: spy.c $(EMULATORINCLUDES)
+
+$(LIFE)/network.o: $(LIFE)/network.c $(LIFE)/network-osf.c
 
 genera: main.o byteswap_world.o $(OBJS) $(OTHEROBJS)
 	cc $(PROFILE?-p:) -o genera $(NONSHARED?-non_shared -lc_r:) $(OTHEROBJS) main.o $(OBJS) $(LIBRARIES)

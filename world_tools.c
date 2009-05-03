@@ -529,6 +529,9 @@ static Integer VLMLoadMapData (World* world, LoadMapEntry* mapEntry)
 			EnsureVirtualAddressRange (mapEntry->address, (int)mapEntry->op.count, FALSE);
 			ReadSwappedVLMWorldFilePage (mapWorld, pageNumber);
 			mapWorld->currentQNumber = 0;
+//---
+printf("LoadMapDataPages @ %p, count %d\n", theAddress, mapEntry->op.count);
+//---
 			theAddress = mapEntry->address;
 			for (i = 0; i < (int)mapEntry->op.count; i++, theAddress++)
 			  {

@@ -398,6 +398,8 @@ void TerminateLifeSupport ()
 #endif
 	TerminateDiskChannels ();
 	TerminateMessageChannels ();
+//temphack
+exit(1);
 	TerminateNetworkChannels ();
 
 	killSleep.tv_sec = 1;

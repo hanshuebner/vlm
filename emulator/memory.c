@@ -30,7 +30,12 @@ Tag *TagSpace = (Tag *)((int64_t)1<<33);		/* 1<<32 bytes of tages */
 /* Data space must be TagSpace*4 for Ivory-based address scheme */
 Integer *DataSpace = (Integer *)((int64_t)1<<35);	/* 4<<32 bytes of data */
 
-#elif defined(OS_LINUX)
+#elif defined(OS_LINUX) && defined(ARCH_PPC64)
+Tag *TagSpace = (Tag *)((int64_t)1<<36);		/* 1<<32 bytes of tages */
+/* Data space must be TagSpace*4 for Ivory-based address scheme */
+Integer *DataSpace = (Integer *)((int64_t)1<<38);	/* 4<<32 bytes of data */
+
+#elif defined(OS_LINUX) && defined(ARCH_X86_64)
 Tag *TagSpace = (Tag *)((int64_t)1<<36);		/* 1<<32 bytes of tages */
 /* Data space must be TagSpace*4 for Ivory-based address scheme */
 Integer *DataSpace = (Integer *)((int64_t)1<<38);	/* 4<<32 bytes of data */
@@ -1304,7 +1309,7 @@ void AdjustProtection(Integer vma, VMAttribute new_attr)
 	     address, new, (uint64_t)vma);
   }
 
-#if defined(OS_OSF) || defined(DEBUGMPROTECT)
+#ifdef OS_OSF
   if (mvalid((caddr_t)&TagSpace[vma-MemoryPageOffset(vma)],
 	     sizeof(Tag)*MemoryPage_Size, new)) {
 #ifdef DEBUGMPROTECT
@@ -1379,7 +1384,9 @@ FINISH:
 
 static caddr_t last_vma = NULL;
 static int times = 0;
-extern void DECODEFAULT();
+//hack - brad
+//extern void DECODEFAULT();
+extern void *DECODEFAULT;
 
 /* Here on a seg-fault */
 
@@ -1453,7 +1460,7 @@ void segv_handler (int sigval, int code, register struct sigcontext *scp)
   }
 }
 
-#elif defined(OS_LINUX)
+#elif defined(OS_LINUX) && defined(ARCH_PPC64)
 #define OPCODE_MASK 0xFC000000
 #define OPCODE_LBZ  0x88000000
 #define OPCODE_STB  0x98000000
@@ -1526,6 +1533,85 @@ void segv_handler (int sigval, register siginfo_t *si, void *uc_p)
       /* a true fault, advance the pc into the fault handler */
       processor->vma = (uint64_t)vma;
       uc->uc_mcontext.regs->nip = (uint64_t)DECODEFAULT;
+  }
+}
+
+#elif defined(OS_LINUX) && defined(ARCH_X86_64)
+
+void segv_handler (int sigval, register siginfo_t *si, void *uc_p)
+{
+  register struct ucontext *uc = (struct ucontext*)uc_p;
+  register uint64_t maybevma = (uint64_t) ((Tag *)si->si_addr - TagSpace);
+  register Integer vma = (Integer) maybevma;
+  register VMAttribute attr = VMAttributeTable[MemoryPageNumber(vma)];
+
+  if (maybevma >> 32) {
+    /* Not a fault in Lisp space */
+    vpunt (NULL, "Unexpected SEGV at PC %p on VMA %p",
+	   (void*)uc->uc_mcontext.gregs[REG_RIP],
+	   si->si_addr);
+  }
+
+  if (last_vma == (caddr_t)si->si_addr)
+  {
+    if (++times > 10)
+    {
+      /* make genera bus-error */
+      processor->vma = (uint64_t)vma;
+      uc->uc_mcontext.gregs[REG_RIP] = (uint64_t)DECODEFAULT;
+      return;
+    }
+  }
+  else
+  {
+    last_vma = (caddr_t)si->si_addr;
+    times = 1;
+  }
+
+  switch (attr & (fault_mask | VMAttribute_TransportDisable | VMAttribute_Exists))
+  {
+    case VMAttribute_Exists:
+    case VMAttribute_Exists|VMAttribute_TransportDisable:
+    case VMAttribute_Exists|VMAttribute_TransportDisable|VMAttribute_TransportFault:
+      {
+	/* no Lisp fault, just note ephemeral and modified and retry */
+	register PHTEntry *ptr = ResidentPagesPointer;
+	
+	*ptr = vma;
+	if (++ptr >= &ResidentPages[ResidentPages_Size])
+	{
+	  ResidentPagesWrap = TRUE;
+	  ptr = ResidentPages;
+	}
+	ResidentPagesPointer = ptr;
+    
+	AdjustProtection(vma, attr|(VMAttribute_Ephemeral|VMAttribute_Modified));
+      }
+      break;
+
+    default:
+      /* verify that it is a Lisp fault */ 
+      {
+	uint32_t instn= *(uint32_t*)uc->uc_mcontext.gregs[REG_RIP];
+//	register uint32_t instn1 = instn & OPCODE_MASK;
+//
+// 	/* ivory register not TagSpace */
+//	if ((uc->uc_mcontext.gregs[30] != (uint64_t)TagSpace)
+//	    /* not lbz or stb */
+//	    || ((instn1 != OPCODE_LBZ) && (instn1 != OPCODE_STB)))
+//	{
+//	  /* Not a Lisp fault */
+//	  vpunt (NULL, "Unexpected SEGV at PC %p (instn=%p) on VMA %p",
+//		 (void*)uc->uc_mcontext.gregs[REG_RIP],
+//		 (void*)(uint64_t)instn, si->si_addr);
+//	}
+      }
+      
+      /* a true fault, advance the pc into the fault handler */
+      processor->vma = (uint64_t)vma;
+//printf("RIP = DECODEFAULT #2 (old rip %p)\n", uc->uc_mcontext.gregs[REG_RIP]);
+      uc->uc_mcontext.gregs[REG_RIP] = (uint64_t)DECODEFAULT;
+//printf("RIP = DECODEFAULT #2 (new rip %p)\n", DECODEFAULT);
   }
 }
 

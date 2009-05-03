@@ -49,14 +49,47 @@
 LIFE = ./life-support
 EMULATOR = ./emulator
 G5EMULATOR = ./g5-emulator
+X86EMULATOR = ./x86_64-emulator
 OTHER = ./other
 
-genera: MAINOPTIONS = -DGENERA -DAUTOSTART
+CPU = $(X86EMULATOR)
+
+genera: MAINOPTIONS = -DGENERA -DAUTOSTART -DUSE_TUN
 minima: MAINOPTIONS = -DMINIMA
 iverify: MAINOPTIONS = -DIVERIFY
 
-CFLAGS = -m64 -std=gnu99 -g2 -I. -I$(LIFE) -I$(EMULATOR) -I$(G5EMULATOR) $(MAINOPTIONS) $(OPTIONS)
-AFLAGS = -m64 -g2 -I. -I$(LIFE) -I$(EMULATOR) -I$(G5EMULATOR) $(MAINOPTIONS) $(OPTIONS)
+OPT = -O -mtune=nocona \
+-fforce-mem -foptimize-sibling-calls -fstrength-reduce \
+-fexpensive-optimizations \
+-fsched-interblock -fsched-spec -fpeephole2 \
+-freorder-blocks  -freorder-functions \
+-funit-at-a-time \
+-falign-functions  -falign-jumps -falign-loops -falign-labels \
+-fcrossjumping \
+-finline-functions -fweb, -frename-registers -funswitch-loops \
+-fregmove \
+-fcse-follow-jumps \
+-fcse-skip-blocks -frerun-cse-after-loop  -frerun-loop-opt -fgcse \
+-fgcse-lm  -fgcse-sm  -fgcse-las -fdelete-null-pointer-checks \
+-foptimize-sibling-calls -fcaller-saves 
+
+# broken
+#-fstrict-aliasing
+#-fschedule-insns  -fschedule-insns2
+
+#-fforce-mem -foptimize-sibling-calls -fstrength-reduce -fcse-follow-jumps
+#-fcse-skip-blocks -frerun-cse-after-loop  -frerun-loop-opt -fgcse
+#-fgcse-lm  -fgcse-sm  -fgcse-las -fdelete-null-pointer-checks
+#-fexpensive-optimizations -fregmove -fschedule-insns  -fsched-ule-insns2
+#-fsched-interblock  -fsched-spec -fcaller-saves -fpeep-hole2
+#-freorder-blocks  -freorder-functions -fstrict-aliasing
+#-funit-at-a-time -falign-functions  -falign-jumps -falign-loops
+#-falign-labels -fcrossjumping
+
+#-finline-functions, -fweb, -frename-registers and -funswitch-loops
+
+CFLAGS = $(OPT) -std=gnu99 -g2 -I. -I$(LIFE) -I$(EMULATOR) -I$(X86EMULATOR) $(MAINOPTIONS) $(OPTIONS)
+AFLAGS = -g2 -I. -I$(LIFE) -I$(EMULATOR) -I$(X86EMULATOR) $(MAINOPTIONS) $(OPTIONS)
 
 .SUFFIXES:
 .SUFFIXES: .o .c .S
@@ -74,23 +107,28 @@ SRCS = main.c spy.c world_tools.c utilities.c \
        $(EMULATOR)/interfac.c $(EMULATOR)/interpds.c $(EMULATOR)/externals.c \
        $(EMULATOR)/memory.c
 
-NETWORKSOURCES = $(LIFE)/network-osf.c $(LIFE)/network-linux.c $(LIFE)/network-darwin.c
+NETWORKSOURCES = $(LIFE)/network-osf.c \
+	$(LIFE)/network-linux.c $(LIFE)/network-tun-linux.c \
+	$(LIFE)/network-darwin.c
 
+FAKEEMULATOR=y
 ifndef FAKEEMULATOR
   ASMS = $(EMULATOR)/emulator.S
   EMULATOROBJ = $(EMULATOR)/emulator.o
-  COMPONENTS = $(G5EMULATOR)/idispat.s $(G5EMULATOR)/ifuncom1.s $(G5EMULATOR)/ifuncom2.s \
-               $(G5EMULATOR)/ifungene.s $(G5EMULATOR)/ifunfcal.s $(G5EMULATOR)/ifunloop.s \
-               $(G5EMULATOR)/ifunlist.s $(G5EMULATOR)/ifuninst.s $(G5EMULATOR)/ifunmath.s \
-               $(G5EMULATOR)/ifunarra.s $(G5EMULATOR)/ifunmove.s $(G5EMULATOR)/ifunpred.s \
-               $(G5EMULATOR)/ifunsubp.s $(G5EMULATOR)/ifunfext.s $(G5EMULATOR)/ifunlexi.s \
-               $(G5EMULATOR)/ifunbits.s $(G5EMULATOR)/ifunblok.s $(G5EMULATOR)/ifunbind.s \
-               $(G5EMULATOR)/ifunfull.s $(G5EMULATOR)/ifunbnum.s $(G5EMULATOR)/ifuntrap.s \
-               $(G5EMULATOR)/ihalt.s $(G5EMULATOR)/idouble.s $(G5EMULATOR)/ifunjosh.s \
-               $(G5EMULATOR)/ifuntran.s
+  COMPONENTS = $(CPU)/idispat.s $(CPU)/ifuncom1.s $(CPU)/ifuncom2.s \
+               $(CPU)/ifungene.s $(CPU)/ifunfcal.s $(CPU)/ifunloop.s \
+               $(CPU)/ifunlist.s $(CPU)/ifuninst.s $(CPU)/ifunmath.s \
+               $(CPU)/ifunarra.s $(CPU)/ifunmove.s $(CPU)/ifunpred.s \
+               $(CPU)/ifunsubp.s $(CPU)/ifunfext.s $(CPU)/ifunlexi.s \
+               $(CPU)/ifunbits.s $(CPU)/ifunblok.s $(CPU)/ifunbind.s \
+               $(CPU)/ifunfull.s $(CPU)/ifunbnum.s $(CPU)/ifuntrap.s \
+               $(CPU)/ihalt.s $(CPU)/idouble.s $(CPU)/ifunjosh.s \
+               $(CPU)/ifuntran.s
 else
-  ASMS = $(EMULATOR)/fake_emulator.c
-  EMULATOROBJ = $(EMULATOR)/fake_emulator.o
+#  ASMS = $(EMULATOR)/fake_emulator.c
+#  EMULATOROBJ = $(EMULATOR)/fake_emulator.o
+  ASMS = stub/stub.c
+  EMULATOROBJ = stub/stub.o
   COMPONENTS = 
 endif
 
@@ -101,16 +139,18 @@ OBJS = $(LIFE)/cold_load.o $(LIFE)/console.o $(LIFE)/disks.o $(LIFE)/initializat
        $(EMULATOR)/interfac.o $(EMULATOR)/interpds.o $(EMULATOR)/externals.o \
        $(EMULATOR)/memory.o $(EMULATOROBJ)
 
-EMULATORINCLUDES = $(EMULATOR)/aihead.h $(G5EMULATOR)/aistat.h $(EMULATOR)/ivoryrep.h
+EMULATORINCLUDES = $(EMULATOR)/aihead.h $(CPU)/aistat.h $(EMULATOR)/ivoryrep.h
 
 OTHEROBJS = 
 
 ifdef NONSHARED
   OTHEROBJS += 
   LIBRARIES = -lpthread -lc -lX11 -lm
-  EARLYLIBS = -L/usr/X11R6/lib64
+  EARLYLIBS = -L/opt/ppc64/X11R6/lib
 else
   OTHEROBJS +=
+#  LIBRARIES = -lpthread -lc -lX11 -lm
+#  EARLYLIBS = -L/opt/ppc64/X11R6/lib
   LIBRARIES = -lpthread -lc -lX11 -lm
   EARLYLIBS = -L/usr/X11R6/lib64
 endif
@@ -129,14 +169,14 @@ $(EMUALTOR)/interfac.o: $(EMULATOR)/interfac.c $(EMULATORINCLUDES)
 spy.o: spy.c $(EMULATORINCLUDES)
 
 genera: main.o byteswap_world.o $(OBJS) $(OTHEROBJS)
-	cc -m64 $(PROFILE) -o genera $(EARLYLIBS) $(OTHEROBJS) main.o $(OBJS) $(LIBRARIES)
-	cc -m64 $(PROFILE) -o byteswap_world $(EARLYLIBS) $(OTHEROBJS) byteswap_world.o $(OBJS) $(LIBRARIES)
+	cc $(PROFILE) -o genera $(EARLYLIBS) $(OTHEROBJS) main.o $(OBJS) $(LIBRARIES)
+	cc $(PROFILE) -o byteswap_world $(EARLYLIBS) $(OTHEROBJS) byteswap_world.o $(OBJS) $(LIBRARIES)
 
 minima: main.o $(OBJS) $(OTHEROBJS)
-	cc -m64 $(PROFILE) -o minima $(EARLYLIBS) $(OTHEROBJS) main.o $(OBJS) $(LIBRARIES)
+	cc $(PROFILE) -o minima $(EARLYLIBS) $(OTHEROBJS) main.o $(OBJS) $(LIBRARIES)
 
 iverify: main.o $(OBJS) $(OTHEROBJS)
-	cc -m64 $(PROFILE) -o iverify $(EARLYLIBS) $(OTHEROBJS) main.o $(OBJS) $(LIBRARIES)
+	cc $(PROFILE) -o iverify $(EARLYLIBS) $(OTHEROBJS) main.o $(OBJS) $(LIBRARIES)
 
 clean:
 	rm -f main.o byteswap_world.o $(OBJS)

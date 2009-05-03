@@ -182,8 +182,8 @@ static void RemoteMemorySpyLoop ()
   LispObj buffer[PageSize];
   LispObj *bufferp;
   unsigned char *p;
-  unsigned int vma, operand, sinlen;
-  int nwords, nchunks, i, pkt_length, reply_length;
+  unsigned int vma, operand;
+  int nwords, nchunks, i, pkt_length, reply_length, sinlen;
   int booted = 0;
   struct sockaddr_in pkt_source;
   struct pollfd pollSpy;

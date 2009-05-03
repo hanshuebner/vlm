@@ -42,13 +42,13 @@
     (floating-exception-checking-prelude)
     (register-dispatch t1  t2 t3
       (|DoubleFloatOpAdd|
-	(FADD f1 f1 f2))
+	(FADD f1 f2 f1))
       (|DoubleFloatOpSub|
-	(FSUB f1 f1 f2))
+	(FSUB f1 f2 f1))
       (|DoubleFloatOpMultiply|
-	(FMUL f1 f1 f2))
+	(FMUL f1 f2 f1))
       (|DoubleFloatOpDivide|
-	(FDIV f1 f1 f2)))
+	(FDIV f1 f2 f1)))
     (floating-exception-checking-postlude doublefloatexc t1)
     (get-nil t3 "There was no FP exception")
   (unlikely-label doublefloatmerge)

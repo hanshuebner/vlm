@@ -75,10 +75,20 @@ void ill_handler (int sigval, int code, register struct sigcontext *scp)
 {
      scp->sc_pc = (int64_t)DoIStageError;
 }
-#elif defined(OS_LINUX)
+#elif defined(OS_LINUX) && defined(ARCH_PPC64)
 void ill_handler (int sigval, siginfo_t *si, void *uc)
 {
      ((struct ucontext*)uc)->uc_mcontext.regs->nip = (uint64_t)DoIStageError;
+}
+#elif defined(OS_LINUX) && defined(ARCH_PPC64)
+void ill_handler (int sigval, siginfo_t *si, void *uc)
+{
+     ((struct ucontext*)uc)->uc_mcontext.regs->nip = (uint64_t)DoIStageError;
+}
+#elif defined(OS_LINUX) && defined(ARCH_X86_64)
+void ill_handler (int sigval, siginfo_t *si, void *uc)
+{
+  ((struct ucontext*)uc)->uc_mcontext.gregs[REG_RIP] = (uint64_t)DoIStageError;
 }
 #elif defined(OS_DARWIN)
 void ill_handler (int sigval, siginfo_t *si, void *uc)
@@ -94,10 +104,15 @@ void fpe_handler (int sigval, int code, register struct sigcontext *scp)
 {
      scp->sc_pc = (int64_t)ARITHMETICEXCEPTION;
 }
-#elif defined(OS_LINUX)
+#elif defined(OS_LINUX) && defined(ARCH_PPC64)
 void fpe_handler (int sigval, siginfo_t *si, void *uc)
 {
      ((struct ucontext*)uc)->uc_mcontext.regs->nip = (uint64_t)ARITHMETICEXCEPTION;
+}
+#elif defined(OS_LINUX) && defined(ARCH_X86_64)
+void fpe_handler (int sigval, siginfo_t *si, void *uc)
+{
+     ((struct ucontext*)uc)->uc_mcontext.gregs[REG_RIP] = (uint64_t)ARITHMETICEXCEPTION;
 }
 #elif defined(OS_DARWIN)
 void fpe_handler (int sigval, siginfo_t *si, void *uc)
@@ -236,6 +251,7 @@ void InitializeFIBTest ()
   LispObjRecord OneHundred;
   OneHundred.tag=Type_Fixnum;
   OneHundred.data=10;
+  //  OneHundred.data=1;
 
   EnsureVirtualAddressRange(0xF8000000L,0x100, FALSE);
   for (i=0; i<51; i++) {
@@ -332,7 +348,7 @@ static void ComputeSpeed (int64_t *speed) {
     if (t1 < tmin) tmin=t1;
   };
   *speed=((((int64_t) tmin)*1000000L)/0x4000000L);
-  processor->mscmultiplier=(speed<<24)/1000000;
+  processor->mscmultiplier=(*speed<<24)/1000000;
 }
 
 #elif defined(ARCH_PPC64)
@@ -362,22 +378,41 @@ static void ComputeSpeed (int64_t *speed) {
   sigaction(SIGALRM, &oldaction, NULL);
   *speed = processor->ticksperms = (stop - start) / 1000000;
 }
+#elif defined(ARCH_X86_64)
+static void ComputeSpeed (int64_t *speed) {
+  extern void SpinWheels ();
+  struct tms tms;
+  int timebefore, timeafter, t1, tmin=0x7FFFFFFF, i;
+  int64_t tps = sysconf(_SC_CLK_TCK);
+  for (i=0; i<3; i++) {
+    times(&tms);
+    timebefore = ((int)((int64_t) (tms.tms_utime+tms.tms_stime)*1000000/tps));
+    SpinWheels();
+    times(&tms);
+    timeafter = ((int)((int64_t) (tms.tms_utime+tms.tms_stime)*1000000/tps));
+    t1=timeafter-timebefore;  
+    if (t1 < tmin) tmin=t1;
+  };
+  *speed=((((int64_t) tmin)*1000000L)/0x4000000L);
+  processor->mscmultiplier=(*speed<<24)/1000000;
+}
 #endif
 
 static void RunPOST (int64_t speed) {
   int mstimeb, mstimea, result;
-#if defined(ARCH_ALPHA)
+#if defined(ARCH_ALPHA) || defined(ARCH_X86_64)
   struct tms tms;
   int64_t tps = sysconf(_SC_CLK_TCK);
 #endif
+printf("RunPOST\n");
   if (TestFunction)
     InitializeTestFunction ();
   else
     InitializeFIBTest (); /* This is the Power on self test */
   if (Trace) InitializeTracing (1000, processor->epc >> 1, 0, NULL);
-#if defined(ARCH_ALPHA)
+#if defined(ARCH_ALPHA) || defined(ARCH_X86_64)
   times(&tms);
-  mstimeb = (int)((int64_t) (tms.tms_utime+tms.tms_stime)*1000000/tps));
+  mstimeb = (int)((int64_t) (tms.tms_utime+tms.tms_stime)*1000000/tps);
 #elif defined(ARCH_PPC64)
   mstimeb = timebase() / processor->ticksperms;
 #endif
@@ -385,7 +420,7 @@ static void RunPOST (int64_t speed) {
       result!=HaltReason_Halted)
     vwarn ("POST", "FAILED: %s", haltreason(result));
   else {
-#if defined(ARCH_ALPHA)
+#if defined(ARCH_ALPHA) || defined(ARCH_X86_64)
     times(&tms);
     mstimea = ((int)((int64_t) (tms.tms_utime+tms.tms_stime)*1000000/tps));
 #elif defined(ARCH_PPC64)
@@ -455,6 +490,7 @@ void InitializeIvoryProcessor (Integer *basedata, Tag *basetag)
     float fpconstant1=1.0;
     int *fpp=(int *)(&fpconstant1);
     /* Prevent overwriting the machine state on subsequent initializations */
+printf("processor %p\n", processor);
     processor->please_stop=0;
     processor->please_trap=0;
     processor->immediate_arg=MakeLispObj(Type_Fixnum,0);
@@ -585,12 +621,16 @@ void InitializeIvoryProcessor (Integer *basedata, Tag *basetag)
   processor->mscmultiplier=109051; /* 6.5 ns clock RPCC N=1 */
   processor->msclockcache=0;
   processor->previousrcpp = 0;
-
 #elif defined(ARCH_PPC64)
   /* MS clock -- initial values */
   processor->ticksperms = 33;	/* 33 MHz timebase */
   processor->msclockcache = 0;
   processor->previoustb = timebase ();
+#elif defined(ARCH_X86_64)
+  /* MS clock -- initial values */
+  processor->mscmultiplier=109051; /* 6.5 ns clock RPCC N=1 */
+  processor->msclockcache=0;
+  processor->previousrcpp = 0;
 #endif
 
   /* Initialize the interpreter state */
@@ -650,6 +690,7 @@ void HaltMachine (void)
 {
   if (Runningp()) {
     processor->please_stop=HaltReason_SpyCalled;
+printf("HaltMachine!!!\n");
     processor->stop_interpreter=1;
   }
 }
@@ -744,6 +785,7 @@ LispObj WriteInternalRegister (int regno, LispObj val)
       break;
 	
     case InternalRegister_BAR1:
+printf("**set bar1 %p\n", object);
       *((LispObjRecordp)&(processor->bar1))=object;
       break;
 

@@ -640,7 +640,7 @@ typedef struct {
 
 /*** Network Channels ***/
 
-#define MaxEmbNetPacketSize 1514
+#define MaxEmbNetPacketSize 1516
 
 #ifdef OS_LINUX
 /* ARP table entry a VLM IP address -- 

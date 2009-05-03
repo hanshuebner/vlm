@@ -45,11 +45,7 @@ int main (int argc, char** argv)
 			sawWorld = TRUE;
 			worldPath = argv[i];
 			if (NULL == strchr (worldPath, '/'))
-			  {
-				worldPath = malloc (argLength + 2 + 1);
-				worldPath = strcpy (worldPath, "./");
-				worldPath = strncat (worldPath, argv[i], argLength);
-			  }
+				worldPath = strncat (strdup ("./"), argv[i], argLength);
 			ByteSwapWorld (worldPath, searchPath);
 		  }
 	  }

@@ -1031,9 +1031,11 @@ void ResetTrapData (void)
 }
 #endif
 
-extern void ICACHEMISS(void);
+//hack
+//extern void ICACHEMISS(void);
+extern void *ICACHEMISS;
 
-#define FLUSHICACHE {CACHELINEP cp = &instructioncache[-1]; int i; for (i = 0; i < icachesize+4; i++, cp++) {cp->code = (char*)&ICACHEMISS; cp->nextcp = (char *)cp;}}
+#define FLUSHICACHE {CACHELINEP cp = &instructioncache[-1]; int i; for (i = 0; i < icachesize+4; i++, cp++) {cp->code = (char*)/*&*/ICACHEMISS; cp->nextcp = (char *)cp;}}
 #define FLUSHSTACKCACHE memset(stackcache, 0, stackcachesize*sizeof(LispObjRecord))
 
 void flushicache (void)

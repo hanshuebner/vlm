@@ -448,7 +448,10 @@ static void handle_input ()
       else {
 	EmbQueuePutWord (keyboard_queue, (clsoInputChar<<24) |
 					  ((uEmbWord)bits<<12) | (uEmbWord)key);
-	if ((key == SK_Function) && (bits & 9) == 9)  
+//brad hack
+printf("key %d, SK_Function %d, bits %x\n", key, SK_Function, bits);
+if ((key == SK_Function) /*&& (bits & 9) == 9*/)  
+//	if ((key == SK_Function) && (bits & 9) == 9)  
 	  EmbCommAreaPtr->stop_request = TRUE;
       }
       break;
@@ -869,6 +872,8 @@ static void get_keyboard_modifier_codes (KeyCode *control_l_code, KeyCode *contr
   keycode1 = XKeysymToKeycode(display, XK_ISO_Left_Tab);	/* Linux X server */
   keycode2 = XKeysymToKeycode(display, XK_Aring);		/* Apple X11 */
   
+printf("keycode1 %d, keycode2 %d\n", keycode1, keycode2);
+
   if (keycode1 != 0 || keycode2 != 0) {
     keyboardType = Apple_Pro;
     skMap = (coldmapentry*)&coldmapApple;
@@ -900,6 +905,9 @@ static void get_keyboard_modifier_codes (KeyCode *control_l_code, KeyCode *contr
 
     /* OSF 4.0 with CDE makes shift+Space be the Multi-Key code, don't get confused */
 
+printf("dec keyboard\n");
+printf("keycode1 %d, keycode2 %d\n", keycode1, keycode2);
+
     if (keycode1 == keycode2)
       *hyper_code = 0;
 
@@ -921,6 +929,10 @@ static void get_keyboard_modifier_codes (KeyCode *control_l_code, KeyCode *contr
   }
 
   if ((*meta_l_code == 0) && (*meta_r_code == 0) && *alt_l_code) *meta_l_code = *alt_l_code;
+
+// hack
+*control_r_code = *control_l_code;
+*super_code = XKeysymToKeycode(display, XK_Control_R);
 
   return;
 }
@@ -1179,7 +1191,7 @@ static void SetupColdLoadNameStrings (VLMConfig* config)
     case ETHERTYPE_IP:
       theAddress.s_addr = htonl (interface->myAddress.s_addr);
       if (NULL == (theHost = gethostbyaddr ((char*)&theAddress.s_addr, sizeof (struct in_addr), AF_INET))) {
-	sprintf (buffer, "INTERNET|%s", theAddress.s_addr);
+	sprintf (buffer, "INTERNET|%s", inet_ntoa(theAddress));
 	longHostName = shortHostName = strdup (buffer);
       }
       else {

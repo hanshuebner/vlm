@@ -20,8 +20,10 @@
 
 #if defined(__alpha) || defined(__alpha__)
 #define ARCH_ALPHA
-#elif defined(__powerpc64__)
+#elif defined(__powerpc64__) || defined(__ppc64__)
 #define ARCH_PPC64
+#elif defined(__x86_64__)
+#define ARCH_X86_64
 #else
 #error "Unsupported processor architecture"
 #endif

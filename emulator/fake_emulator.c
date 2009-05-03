@@ -7,6 +7,7 @@
 static int first_call = 1;
 
 int iInterpret (PROCESSORSTATEP ivory) {
+  printf("[iInterpret]\n");
   if (first_call) {
     first_call = 0;
     return(HaltReason_Halted);

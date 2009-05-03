@@ -174,6 +174,8 @@ LispObj CoprocessorRead (unsigned int operand)
   /* Result for invalid register => -1 (all ones), since NULL is valid! */
   LispObj INVALID = (LispObj) -1L;
 
+//printf("CoprocessorRead(operand = %x)\n", operand);
+
   switch (operand) {
     case CoprocessorRegister_MicrosecondClock:
       /* As is typical of Unix, the error value return by the times function is also a
@@ -182,14 +184,24 @@ LispObj CoprocessorRead (unsigned int operand)
       tps = sysconf(_SC_CLK_TCK);
       mstime = times(&tms);
       mstimenumber=
+//#define USE_CPU_FOR_MICROSECOND_CLOCK
 #ifdef USE_CPU_FOR_MICROSECOND_CLOCK
-		   (((int64_t)tms.tms_utime + (int64_t)tms.tms_stime) * 1000000L / tps)
+		   (((int64_t)tms.tms_utime + (int64_t)tms.tms_stime) * 1000000L / tps);
 #else
 		   ((int64_t)mstime * 1000000L / tps);	
 #endif
+ {
+   static unsigned long basems = 0;
+   if (basems == 0) {
+     basems = ((int64_t)mstime * 1000000L / tps);	
+     mstimenumber = 0;
+   } else
+     mstimenumber -= basems;
+ }
       inttimenum=mstimenumber<<MSclock_UnitsToMSShift;
       if (inttimenum>processor->msclockcache) 
 	processor->msclockcache=inttimenum;
+//printf("CoprocessorRegister_MicrosecondClock: %p\n", mstimenumber);
       return (MakeLispObj (Type_Fixnum, mstimenumber));
       break;
 
@@ -466,7 +478,6 @@ void MaybePrintTrace ()
 void TerminateTracing ()
 {
   if (traceS != NULL && traceS != stdout) {
-    MaybePrintTrace ();
     fclose (traceS);
     traceS = NULL;
   }

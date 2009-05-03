@@ -52,6 +52,7 @@ void AttachDiskChannel (AttachDiskChannelRequest* pRequest)
 
 	request->result = ESUCCESS;					/* Presume success */
 	request->errorMsg = NullEmbPtr;				/* Can't return error messages (yet) */
+printf("AttachDiskChannel\n");
 
 	diskState = (DiskChannelState*) malloc (sizeof (DiskChannelState));
 	if (NULL == diskState)
@@ -112,6 +113,7 @@ void AttachDiskChannel (AttachDiskChannelRequest* pRequest)
 	if (CreateIfNotFound == request->ifNotFoundAction)
 		openFlags |= O_CREAT;
 
+printf("AttachDiskChannel open '%s'\n", filename);
 	diskState->fd = open (filename, openFlags, S_DEFFILEMODE);
 	if (-1 == diskState->fd)
 	  {

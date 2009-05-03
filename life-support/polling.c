@@ -224,6 +224,15 @@ void IvoryLifePolling (pthread_addr_t argument)
 
 		UpdateVLMStatus ();
 
+		if (0) {
+		  printf("sleep; interval %d, time %d, %d\n",
+			 EmbCommAreaPtr->clock_interval,
+			 pollingSleep.tv_sec, pollingSleep.tv_nsec);
+		}
+
+pollingSleep.tv_sec = 1;
+pollingSleep.tv_nsec = 0;
+
 		if (pthread_delay_np (&pollingSleep))
 			vpunt (NULL, "Unable to sleep in thread %lx", self);
 	  }

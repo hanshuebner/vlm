@@ -85,6 +85,8 @@ static void InitializeNetChannel (NetworkInterface* interface, int unitNumber,
 	p->next = EmbCommAreaPtr->channel_table;	/* Link into the channel list */
 	EmbCommAreaPtr->channel_table = cp;
 
+/*#define NOROOT*/
+#ifndef NOROOT
 	p->fd = pfopen ((0 == interface->device[0]) ? NULL : interface->device, O_RDWR);
 	if (-1 == p->fd)
 		vpunt (NULL, "Unable to open VLM network interface #%d using %s", unitNumber,
@@ -94,22 +96,34 @@ static void InitializeNetChannel (NetworkInterface* interface, int unitNumber,
 		vpunt (NULL,
 			   "Unable to determine hardware interface name for VLM network interface #%d",
 			   unitNumber);
+#endif
 	p->name0 = p->name1 = 0;
 	memcpy ((char*)&p->name0, hardwareInterface.ifr_name, 2* sizeof (EmbWord));
 
 	p->status = 0;
 	p->hostPrimaryProtocol = ETHERTYPE_IP;
-	p->hostPrimaryAddress = htonl (localHostAddress->s_addr);
-	p->guestPrimaryProtocol = interface->myProtocol;
-	p->guestPrimaryAddress = htonl (interface->myAddress.s_addr);
+	p->hostPrimaryAddress = ntohl (localHostAddress->s_addr);
+	p->guestPrimaryAddress = ntohl (interface->myAddress.s_addr);
+	p->guestPrimaryAddress = interface->myAddress.s_addr;
 
+#ifndef NOROOT
 	if (-1 == ioctl (p->fd, EIOCDEVP, &deviceParms))
 		vpunt (NULL,
 			   "Unable to determine hardware interface address for VLM network interface #%d",
 			   unitNumber);
+#endif
 	p->hardwareAddressHigh = p->hardwareAddressLow = 0;
 	memcpy ((char*)&p->hardwareAddressHigh, deviceParms.end_addr, deviceParms.end_addr_len);
 	
+#ifndef NOROOT
+	x = 1;
+	if (-1 == ioctl (p->fd, EIOCALLOWPROMISC, &x))
+		vpunt (NULL, "Unable to set ALLOWPROMISC for VLM network interface #%d", unitNumber);
+
+	x = 1;
+	if (-1 == ioctl (p->fd, EIOCALLOWCOPYALL, &x))
+		vpunt (NULL, "Unable to set ALLOWCOPYALL for VLM network interface #%d", unitNumber);
+
 	ioctlBits = ENHOLDSIG | ENNONEXCL | ENCOPYALL;
 	if (-1 == ioctl (p->fd, EIOCMBIS, &ioctlBits))
 		vpunt (NULL, "Unable to set attributes for VLM network interface #%d", unitNumber);
@@ -122,11 +136,13 @@ static void InitializeNetChannel (NetworkInterface* interface, int unitNumber,
 	if (-1 == ioctl (p->fd, EIOCSRTIMEOUT, &timeout))
 		vpunt (NULL, "Unable to set packet timeout for VLM network interface #%d", unitNumber);
 
+#if 0
 	x = deviceParms.end_MTU;					/* TEMPORARY workaround to DEC bug */
 	x = (x < MaxEmbNetPacketSize) ? x : MaxEmbNetPacketSize;
 	if (-1 == ioctl (p->fd, EIOCTRUNCATE, &x))
 		vpunt (NULL, "Unable to set maximum packet size for VLM network interface #%d",
 			   unitNumber);
+#endif
 
 	x = -1;										/* -1 => Get maximum allowable queue size */
 	if (-1 == ioctl (p->fd, EIOCMAXBACKLOG, &x))
@@ -134,31 +150,92 @@ static void InitializeNetChannel (NetworkInterface* interface, int unitNumber,
 			   unitNumber);
 	if (-1 == ioctl (p->fd, EIOCSETW, &x))
 		vpunt (NULL, "Unable to set queue size for VLM network interface #%d", unitNumber);
+#endif
 
 	p->filter.enf_Priority = 255;				/* Maximum priority */
+p->filter.enf_Priority = 10;
 
 	/* A packet filter which will reject IP packets destined for the host */
 	fp = &p->filter.enf_Filter[0];
+#if 0
 	*fp++ = ENF_PUSHWORD + etherTypeOffset;
 	*fp++ = ENF_PUSHLIT;
-	*fp++ = ntohs (ETHERTYPE_IP);
+	*fp++ = htons (ETHERTYPE_IP);
 	*fp++ = ENF_NEQ;							/* TRUE if not an IP packet */
 	*fp++ = ENF_PUSHWORD + ipAddressOffset;
 	*fp++ = ENF_PUSHLIT;
-	*fp++ = ntohs (p->hostPrimaryAddress >> 16);
+	*fp++ = htons (p->hostPrimaryAddress >> 16);
 	*fp++ = ENF_NEQ;							/* TRUE if top of addresses don't match */
 	*fp++ = ENF_PUSHWORD + ipAddressOffset + 1;
 	*fp++ = ENF_PUSHLIT;
-	*fp++ = ntohs (p->hostPrimaryAddress);
+	*fp++ = htons (p->hostPrimaryAddress);
 	*fp++ = ENF_NEQ;							/* TRUE if bottom of addresses don't match */
 	*fp++ = ENF_OR;								/* TRUE if addresses don't match */
 	*fp++ = ENF_OR;								/* TRUE if not IP or addresses don't match */
+#else
+
+	/* not ip-packet or (( not to-host and not from-host ) | to-us) */
+
+	/* not IP packet */
+	*fp++ = ENF_PUSHWORD + etherTypeOffset;
+	*fp++ = ENF_PUSHLIT;
+	*fp++ = htons (ETHERTYPE_IP);
+	*fp++ = ENF_NEQ;							/* TRUE if not an IP packet */
+
+	/* not to host */
+	*fp++ = ENF_PUSHWORD + ipAddressOffset;
+	*fp++ = ENF_PUSHLIT;
+	*fp++ = htons (p->hostPrimaryAddress >> 16);
+	*fp++ = ENF_NEQ;							/* TRUE if top of addresses don't match */
+	*fp++ = ENF_PUSHWORD + ipAddressOffset + 1;
+	*fp++ = ENF_PUSHLIT;
+	*fp++ = htons (p->hostPrimaryAddress);
+	*fp++ = ENF_NEQ;							/* TRUE if bottom of addresses don't match */
+	*fp++ = ENF_OR;								/* TRUE if addresses don't match */
+
+	/* not from host */
+	*fp++ = ENF_PUSHWORD + ipAddressOffset - 2;
+	*fp++ = ENF_PUSHLIT;
+	*fp++ = htons (p->hostPrimaryAddress >> 16);
+	*fp++ = ENF_NEQ;
+	*fp++ = ENF_PUSHWORD + ipAddressOffset - 2 + 1;
+	*fp++ = ENF_PUSHLIT;
+	*fp++ = htons (p->hostPrimaryAddress);
+	*fp++ = ENF_NEQ;
+	*fp++ = ENF_OR;
+
+	*fp++ = ENF_AND;
+
+	/* to us */
+	*fp++ = ENF_PUSHWORD + ipAddressOffset;
+	*fp++ = ENF_PUSHLIT;
+	*fp++ = htons (p->guestPrimaryAddress >> 16);
+	*fp++ = ENF_EQ;
+	*fp++ = ENF_PUSHWORD + ipAddressOffset + 1;
+	*fp++ = ENF_PUSHLIT;
+	*fp++ = htons (p->guestPrimaryAddress);
+	*fp++ = ENF_EQ;
+	*fp++ = ENF_AND;
+
+	*fp++ = ENF_OR;
+
+	*fp++ = ENF_OR;
+#endif
 
 	p->filter.enf_FilterLen = fp - &p->filter.enf_Filter[0];
 
+	{
+	  struct in_addr a;
+	  a.s_addr = htonl(p->hostPrimaryAddress);
+	  printf("p->hostPrimaryAddress %08x\n", p->hostPrimaryAddress);
+	  printf("hostPrimaryAddress %s\n", inet_ntoa(a));
+	}
+
+#ifndef NOROOT
 	if (-1 == ioctl (p->fd, EIOCSETF, &p->filter))
 		vpunt (NULL, "Unable to set packet filter program for VLM network interface #%d",
 			   unitNumber);
+#endif
 
 	p->nTransmitFailures = p->nReceiveFailures = 0;
 
@@ -202,6 +279,7 @@ static void InitializeNetChannel (NetworkInterface* interface, int unitNumber,
 			sprintf (addressAsString, "%s;%s", addressAsString, interface->myOptions);
 	  }
 	p->addressString = MakeEmbString (addressAsString);
+printf("%s\n", addressAsString);
 #endif
 
 	if (pthread_create (&p->receiverThread, &EmbCommAreaPtr->inputThreadAttrs,
@@ -230,6 +308,34 @@ void ResetNetworkChannel (EmbChannel* channel)
 	ResetOutgoingQueue (netChannel->hostToGuestQ);
 }
 
+#if 1
+static void show_packet(char *who, unsigned char *pkt)
+{
+  unsigned char *p;
+  char *prot;
+  unsigned short sp, dp;
+  p = pkt;
+  if (p[12] == 0x08 && p[13] == 0) {
+    switch (p[14+9/*20-11*/]) {
+    case 1: prot = "icmp"; break;
+    case 6: prot = "tcp"; break;
+    case 17: prot = "udp"; break;
+    default: prot = "?";
+    }
+    sp = (p[14+20+0] << 8) | p[14+20+1];
+    dp = (p[14+20+2] << 8) | p[14+20+3];
+    printf("%s %u.%u.%u.%u:%u -> %u.%u.%u.%u:%u %s\n",
+	   who,
+	   p[14+20-8], p[14+20-7], p[14+20-6], p[14+20-5], sp,
+	   p[14+20-4], p[14+20-3], p[14+20-2], p[14+20-1], dp,
+	   prot);
+  }
+  if (p[12] == 0x08 && p[13] == 6) {
+    printf(".");
+    fflush(stdout);
+  }
+}
+#endif
 
 /* Network Channel transmitter */
 
@@ -242,6 +348,7 @@ static void NetworkChannelTransmitter (EmbNetChannel* pNetChannel)
   EmbNetPacket* netPacket;
   ssize_t nBytes, actualBytes;
 
+if (0) printf("NetworkChannelTransmitter()\n");
 	while (EmbQueueFilled (transmitQueue))
 	  {
 		if (0 == EmbQueueSpace (returnQueue))
@@ -260,7 +367,12 @@ static void NetworkChannelTransmitter (EmbNetChannel* pNetChannel)
 			  {
 				netPacket = (EmbNetPacket*) HostPointer (netPacketPtr);
 				nBytes = (ssize_t) netPacket->nBytes;
+#ifndef NOROOT
+show_packet("tx", (unsigned char *)&netPacket->data[0]);
 				actualBytes = write (netChannel->fd, &netPacket->data[0], nBytes);
+#else
+				actualBytes = 0;
+#endif
 				if (actualBytes != nBytes)
 				  {
 					netChannel->nTransmitFailures++;
@@ -322,6 +434,8 @@ static void NetworkChannelReceiver (pthread_addr_t argument)
 
 		else
 		  {
+show_packet("rx", (unsigned char *)&netChannel->receiveBuffer);
+
 			while (0 == (netPacketPtr = EmbQueueTakeWord (supplyQueue)))
 			  {
 				receiverPause.tv_sec = 0;

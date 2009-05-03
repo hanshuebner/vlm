@@ -101,6 +101,7 @@ void vpunt (char* section, char* format, ...)
 
     MaybePrintTrace ();
 
+while (1);
 	exit (EXIT_FAILURE);
 }
 
