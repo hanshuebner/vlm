@@ -1,10 +1,12 @@
 # more .VLM
 #genera.network: 192.245.4.23;mask=255.255.255.0
-genera.network: em0:192.168.150.128;mask=255.255.255.0; gateway=192.168.150.2
+genera.network: em0:192.168.5.73;mask=255.255.255.0;gateway=192.168.5.1
 
 genera.virtualMemory: 2048
+genera.trace: yes
 
-genera.world: ../snap4/world.vlod
+#genera.world: ../snap4/world.vlod
+genera.world: ../snap4/Genera-8-5.vlod
 
 genera.debugger: ../snap4/VLM_debugger
 #genera.debugger: ../symbolics/VLM_debugger

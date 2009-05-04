@@ -448,10 +448,7 @@ static void handle_input ()
       else {
 	EmbQueuePutWord (keyboard_queue, (clsoInputChar<<24) |
 					  ((uEmbWord)bits<<12) | (uEmbWord)key);
-//brad hack
-printf("key %d, SK_Function %d, bits %x\n", key, SK_Function, bits);
-if ((key == SK_Function) /*&& (bits & 9) == 9*/)  
-//	if ((key == SK_Function) && (bits & 9) == 9)  
+	if ((key == SK_Function) && (bits & 9) == 9)  
 	  EmbCommAreaPtr->stop_request = TRUE;
       }
       break;

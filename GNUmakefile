@@ -159,6 +159,8 @@ ifdef PROFILE
   override PROFILE = -p
 endif
 
+all: genera
+
 $(LIFE)/network.o: $(NETWORKSOURCES)
 
 stub/stub.o: glob(stub/output*)

@@ -684,8 +684,8 @@ typedef struct
 	EmbQueue	*hostToGuestQ;			/* ... */
 #ifdef USE_LIBPCAP
     pcap_t* pcap;
-#else
 	int			fd;						/* File descriptor of our filter or -1 if not open */
+#else
 #ifdef OS_LINUX
 	struct sockaddr_ll	sll;			/* Contains information needed to write packets */
 	EmbNetARPReq		*arpReq;		/* List of ARP entries associated with this channel */

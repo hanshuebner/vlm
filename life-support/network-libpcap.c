@@ -367,7 +367,7 @@ static void NetworkChannelReceiver (pthread_addr_t argument)
   register EmbQueue* receiveQueue = netChannel->hostToGuestQ;
   struct pollfd pollReceiver;
   struct timespec receiverPause;
-  struct sockaddr_ll sll;
+  struct sockaddr sll;
   EmbPtr netPacketPtr;
   EmbNetPacket* netPacket;
   ssize_t actualBytes;
@@ -392,8 +392,8 @@ static void NetworkChannelReceiver (pthread_addr_t argument)
     sllLen = sizeof (sll);
     actualBytes = recvfrom (netChannel->fd, &netChannel->receiveBuffer,
                             MaxEmbNetPacketSize, MSG_TRUNC,
-                            (struct sockaddr*)&sll, &sllLen);
-    dump_packet("rx", &netChannel->receiveBuffer, actualBytes);
+                            &sll, &sllLen);
+    dump_packet("rx", (unsigned char*)&netChannel->receiveBuffer, actualBytes);
 
     if (actualBytes < 0)
       netChannel->nReceiveFailures++;

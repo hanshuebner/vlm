@@ -458,7 +458,7 @@ static void InterpretOptions (VLMConfig* config, XrmDatabase options)
 				if (end2)
 				  {
 					*end2 = '\0';
-#ifdef OS_OSF
+#if defined(OS_OSF) || defined(__FreeBSD__)
 					config->tracing.outputFile = strdup (start + 1);
 #else
 					config->tracing.outputFile = strndup (start + 1, _POSIX_PATH_MAX + 1);
